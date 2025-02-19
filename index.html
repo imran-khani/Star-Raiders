@@ -16,7 +16,22 @@
        <!-- link to google fonts -->
       <link href='https://fonts.googleapis.com/css?family=Orbitron' rel='stylesheet' type='text/css'>
       <!-- parse -->
-      <script src="http://www.parsecdn.com/js/parse-1.2.19.min.js"></script>
+      <script>
+        // Fallback if Parse fails to load
+        window.Parse = window.Parse || {
+          initialize: function() {},
+          Object: {
+            extend: function() { return function() {}; }
+          },
+          Query: function() { return {
+            greaterThan: function() { return this; },
+            ascending: function() { return this; },
+            limit: function() { return this; },
+            find: function() { return Promise.resolve([]); }
+          }; }
+        };
+      </script>
+      <script src="https://npmcdn.com/parse@2.19.0/dist/parse.min.js"></script>
       
       <!-- include some basic math helper class -->
       <script src="http://bolloxim.github.io/Star-Raiders/javascripts/simplemath.js"></script>
@@ -47,5 +62,5 @@
       <!-- include some basic math helper class -->
       <script src="http://bolloxim.github.io/Star-Raiders/javascripts/star-raiders.js"></script>
     </body>
-  </div>
+    
 </html>
