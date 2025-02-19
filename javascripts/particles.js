@@ -1,4 +1,3 @@
-
 /*****************************************************************************
 The MIT License (MIT)
 
@@ -49,6 +48,20 @@ var explodeEmitter;
 var torpedoEmiiter;
 var dustEmitter;
 var plasmaEmitter;
+
+// Add object pooling
+const particlePool = [];
+const MAX_PARTICLES = 1000;
+
+function getParticle() {
+  return particlePool.pop() || new Particle();
+}
+
+function returnParticle(particle) {
+  if (particlePool.length < MAX_PARTICLES) {
+    particlePool.push(particle);
+  }
+}
 
 function ExplodeParticleEmitter()
 {
@@ -455,17 +468,20 @@ function update()
   if ((frameCount&255)==0) spawn();
 }
 
-function UpdateParticles()
-{
-  warpCentre = getWarpCentre();
-  cX = warpCentre.x;
-  cY = warpCentre.y;
-
+function UpdateParticles() {
+  const start = performance.now();
+  
   var i = spawnList.length;
-  while (i)
-  {
-      --i;
+  while (i) {
+    --i;
     if (spawnList[i].update()==false) spawnList.splice(i,1);
+  }
+
+  perfMetrics.particles = performance.now() - start;
+  
+  // Log if too many particles
+  if (spawnList.length > 1000) {
+    console.warn('High particle count:', spawnList.length);
   }
 }
 
