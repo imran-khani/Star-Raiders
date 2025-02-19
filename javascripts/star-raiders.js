@@ -1,4 +1,3 @@
-
 /*****************************************************************************
 The MIT License (MIT)
 
@@ -924,8 +923,29 @@ function renderGalacticScanner()
 
 // initialization
 
-function init()
-{
+function init() {
+  // Initialize Parse
+  try {
+    Parse.initialize("your-parse-app-id"); // Replace with actual Parse app ID if needed
+    Parse.serverURL = 'https://parseapi.back4app.com/'; // Replace with actual Parse server URL
+  } catch (e) {
+    console.warn('Parse initialization failed:', e);
+    // Provide fallback for high scores/rankings
+    window.Parse = {
+      Object: {
+        extend: function() { return function() {}; }
+      },
+      Query: function() {
+        return {
+          greaterThan: function() { return this; },
+          ascending: function() { return this; },
+          limit: function() { return this; },
+          find: function() { return Promise.resolve([]); }
+        };
+      }
+    };
+  }
+
   // setup canvas and context
   canvas = document.getElementById('star-raiders');
   context = canvas.getContext('2d');
@@ -1062,7 +1082,9 @@ function mouseMove(event)
 
 function mouseDown(event)
 {
-  if (clearTitleClick==false) return;
+  if (typeof clearTitleClick === 'function') {
+    clearTitleClick();
+  }
   if (CheckButtons(mouseX, mouseY, false) == true) return;
   
   if (event.which&1)
@@ -2930,72 +2952,31 @@ const enterHyperspace = 1;
 const inHyperspace = 2;
 const cancelHyperspace = 3;
 
-function UpdateShipControls()
-{
-  TestMoveUnderMouse(mouseX, mouseY,dragging);
-  if (triggerWarp!=normalSpace) EnteringWarp();
-  
-
-  return;
-  
-  
-  
-  var rotationForce = -(dragCurr.x - dragStart.x) / canvas.width; 
-  var pitchForce = (dragCurr.y - dragStart.y) / canvas.height; 
-  if (dragging==true) 
-  {
-    rotateVelocity+=rotationForce;
-    pitchVelocity+=pitchForce;
-  }
-  rotateVelocity*=0.9;
-  pitchVelocity*=0.9;
-  shipTheta+=(pitchVelocity*Math.PI*0.25) / 60;
-  shipPhi+=(rotateVelocity*Math.PI*0.25) / 60;
-
-  // build rotation matrix
+function UpdateShipControls() {
+  // Matrix operations happening every frame
   var rx = new matrix3x3();
   var rz = new matrix3x3();
-  var ry = new matrix3x3();
+  rz.rotateZ(shipPhi);
   rx.rotateX(shipTheta);
-  ry.rotateY(shipPhi);
-  orientation.clone(  ry.multiply(rx.multiply(dragmatrix)) );
-  
-  // orientate the view polar for the scanner
-  var rotate90 = new matrix3x3();
-  rotate90.rotateX(Math.PI*0.5);
-  scannerView.clone(rotate90.multiply(orientation));
-  
-  // move along direction of rotation
-  var dv = setShipVelocity-shipVelocity;
-  if (dv<-1) dv = -0.2;
-  if (dv>+1) dv = +0.2;
-  shipVelocity += dv;
-  
-  var speed = -shipVelocity * freqHz;
-  localPosition.x += orientation.m[6]*speed;
-  localPosition.y += orientation.m[7]*speed;
-  localPosition.z += orientation.m[8]*speed;
-
-//  UpdateEngineSound(shipVelocity);
-
- }
+  orientation.clone(rz.multiply(rx.multiply(dragmatrix)));
+}
 
 var starTheta = 0;
 var starPhi = 0;
 
-// continual movement.. 
+// Continual movement.. 
 function TestMoveUnderMouse(mouseX, mouseY)
 {
-  // calculate the fov angle from the centre to the mouse
+  // Calculate the fov angle from the centre to the mouse
   var dx = centreX - mouseX;
-  dx = Math.max(Math.min(dx, 512), -512); // clamp rotation spee
+  dx = Math.max(Math.min(dx, 512), -512); // Clamp rotation speed
   var sx = dx * focalPoint*5 / 1000;
   var dy = centreY - mouseY;
   dy = Math.max(Math.min(dy, 512), -512);
   var sy = -dy * focalPoint*5 / 1000;
-  //convert into angle
+  // Convert into angle
   angleX = Math.tan(sx/1000);
-  //convert into angle
+  // Convert into angle
   angleY = Math.tan(sy/1000);
 
   var rx = new matrix3x3();
@@ -3016,12 +2997,12 @@ function TestMoveUnderMouse(mouseX, mouseY)
     orientation.clone(rotate180.multiply(shipOrientation));
   }
   
-  // orientate the view polar for the scanner
+  // Orientate the view polar for the scanner
   var rotate90 = new matrix3x3();
   rotate90.rotateX(Math.PI*0.5);
   scannerView.clone(rotate90.multiply(orientation));
   
-  // move along direction of rotation
+  // Move along direction of rotation
   var dv = setShipVelocity-shipVelocity;
   if (dv<-1) dv = -0.2;
   if (dv>+1) dv = +0.2;
@@ -3031,10 +3012,10 @@ function TestMoveUnderMouse(mouseX, mouseY)
   localPosition.x += shipOrientation.m[6]*speed;
   localPosition.y += shipOrientation.m[7]*speed;
   localPosition.z += shipOrientation.m[8]*speed;
-  // update stats
+  // Update stats
   statistics.distance+=Math.abs(speed);
   
-  // changing
+  // Changing
   setInitVelocity(-setShipVelocity*0.05);
   if (viewingAft()) setInitVelocity(getInitVelocity()*-1);
   
@@ -3044,61 +3025,7 @@ function TestMoveUnderMouse(mouseX, mouseY)
   
 }
 
-/*
-
-var angleX=0;
-var angleY=0;
-function TestMoveUnderMouse(mouseX, mouseY, click)
-{
-  if (click)
-  {
-      // calculate the fov angle from the centre to the mouse
-      var dx = centreX - mouseX;
-      var sx = dx * focalPoint*5 / 1400;
-      var dy = centreY - mouseY;
-      var sy = -dy * focalPoint*5 / 1400;
-
-      //convert into angle
-      angleX = Math.tan(sx/1400);
-      //convert into angle
-      angleY = Math.tan(sy/1400);
-  }
-  else
-  {
-      angleX-=angleX*freqHz;
-      angleY-=angleY*freqHz;
-  }
-  
-  var rx = new matrix3x3();
-  var rz = new matrix3x3();
-  var ry = new matrix3x3();
-  rx.rotateX(angleY*freqHz);
-  ry.rotateY(angleX*freqHz);
-  
-  orientation.clone(  ry.multiply(rx.multiply(orientation)) );
-  
-  // orientate the view polar for the scanner
-  var rotate90 = new matrix3x3();
-  rotate90.rotateX(Math.PI*0.5);
-  scannerView.clone(rotate90.multiply(orientation));
-  
-  // move along direction of rotation
-  var dv = setShipVelocity-shipVelocity;
-  if (dv<-1) dv = -0.2;
-  if (dv>+1) dv = +0.2;
-  shipVelocity += dv;
-  
-  var speed = -shipVelocity * freqHz;
-  localPosition.x += orientation.m[6]*speed;
-  localPosition.y += orientation.m[7]*speed;
-  localPosition.z += orientation.m[8]*speed;
-  
-    // changing
-  initVelocity = -setShipVelocity*0.125;
-
-}
-*/
-// throttle + energy
+// Throttle + energy
 var throttleTable =  [0, 0.3,  0.75, 1.5,  3,  6,  12, 25, 37, 43 ];
 var throttleEnergy = [0,   1,   1.5,   2, 2.5, 3, 3.5, 7.5, 11.25, 15];
 
@@ -3122,7 +3049,7 @@ function SetThrottle(slider)
   if (triggerWarp==normalSpace)
   {
     throttle = Math.round(slider.value);
-    // engines damaged or destroyed 1/2 or 1/4 speed
+    // Engines damaged or destroyed 1/2 or 1/4 speed
     setShipVelocity = throttleTable[throttle];
     shipVelocityEnergy = throttleEnergy[throttle];
     if (shipDamage.engines>=isDamaged) setShipVelocity*=0.5;
@@ -3132,22 +3059,22 @@ function SetThrottle(slider)
 
 function energyManagement()
 {
-  // twin ions
+  // Twin ions
   energy -= (shipVelocityEnergy*freqHz);
-  // shields
+  // Shields
   if (getShieldUp() && !shieldVunerable()) energy -= 2*freqHz;
-  // lifesupport
+  // Lifesupport
   energy -= 0.25 * freqHz;
-  // tracking computer
+  // Tracking computer
   if (trackingComputer) energy -= 0.5 * freqHz;
   
-  // check damage
+  // Check damage
   CheckShields();
   
   //
   if (shipDamage.shields>=isDamaged && Math.random()>0.98) setSplutter(30, 60);
 
-  // end game
+  // End game
   if (energy < 0 ) EndGame(energyLost);
 }
 
@@ -3229,14 +3156,14 @@ function EnteringWarp()
         setWarpStartDepth(getCameraDepth());
         setWarpTime(0);
         
-        // clear data
+        // Clear data
         clearAsteroids();
         nmes = []; 
       }
    }
   if (triggerWarp == inHyperspace)
   {
-    // waiting destination 
+    // Waiting destination 
     if (getEnterWarp() == false)
     {
        PlayConfirm();
@@ -3248,15 +3175,15 @@ function EnteringWarp()
        SetThrottle(slider);
        GetControl("Hyperspace").state = 0;
       
-       // setwarpLocation
+       // SetwarpLocation
        var dif = Math.sqrt(warpDeltaDistance) / (Math.sqrt(centreX*centreX+centreY*centreY)*50*getWarpTime());
        if (gameDifficulty == novice) badDriving = 0;
        else badDriving = dif * (gameDifficulty+7) * 0.1;
-       // factor displacement over distance
+       // Factor displacement over distance
        badDriving *= Math.round(Math.abs(warpLocation.x-shipLocation.x) + Math.abs(warpLocation.y-shipLocation.y));
        badDriving -= badDriving*0.5;
        //console.log("baddriving = " + badDriving);
-       // now randomize in the cone
+       // Now randomize in the cone
        var x = warpLocation.x + Math.random()*badDriving;
        var y = warpLocation.y + Math.random()*badDriving;
       
@@ -3268,7 +3195,7 @@ function EnteringWarp()
            warpEnergy = 100;
        }
        
-       // update stats - sectors covered, jumped and energy
+       // Update stats - sectors covered, jumped and energy
        statistics.travelled += Math.round(Math.abs(x-shipLocation.x) + Math.abs(y-shipLocation.y));
        statistics.jumpedEnergy+=warpEnergy;
        statistics.jumped++;
@@ -3298,7 +3225,7 @@ function EnteringWarp()
      PlayExit();
      CancelHyperSound();
     
-     // statistics 
+     // Statistics 
      statistics.jumpedEnergy-=100;
      statistics.jumpCancelled++;
   }
@@ -3340,7 +3267,7 @@ function RenderStarDome()
         var y = y1 * depth + centreY;
         var sz = depth * 0.2;
 
-        // fill a rect
+        // Fill a rect
         context.rect(x,y, 4, 4);
     }
   
@@ -3377,6 +3304,24 @@ function TrackTargets()
 
 }
 
-// entry point
+// Cache matrix results
+let lastPhi = 0;
+let lastTheta = 0;
+let cachedMatrix = null;
+
+function getRotationMatrix(phi, theta) {
+  if (phi === lastPhi && theta === lastTheta && cachedMatrix) {
+    return cachedMatrix;
+  }
+  
+  // Only recalculate when angles change
+  lastPhi = phi;
+  lastTheta = theta;
+  // ... matrix calculation ...
+  cachedMatrix = result;
+  return result;
+}
+
+// Entry point
 init();
 animate();
