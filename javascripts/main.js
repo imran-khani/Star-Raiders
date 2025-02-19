@@ -1,4 +1,3 @@
-
 /*****************************************************************************
 The MIT License (MIT)
 
@@ -145,17 +144,66 @@ function updateclocks()
 
 // per frame tick functions
 
-function animate()
-{
+let lastFrameTime = 0;
+const MIN_FRAME_TIME = 1000/60; // 60 FPS cap
+
+// Add performance monitoring
+const perfMetrics = {
+  update: 0,
+  render: 0,
+  particles: 0,
+  collisions: 0
+};
+
+function animate(currentTime) {
+  if (currentTime - lastFrameTime < MIN_FRAME_TIME) {
+    requestAnimationFrame(animate);
+    return;
+  }
+  lastFrameTime = currentTime;
+
+  const frameStart = performance.now();
+  
   updateclocks();
-  // movement update
+  
+  const updateStart = performance.now();
   update();
-  // render update
-  render();
-  // trigger next frame
+  perfMetrics.update = performance.now() - updateStart;
+  
+  const renderStart = performance.now();
+  render(); 
+  perfMetrics.render = performance.now() - renderStart;
+
+  perfMetrics.total = performance.now() - frameStart;
+
+  // Log if frame takes too long
+  if (perfMetrics.total > 16.67) { // 60fps = 16.67ms per frame
+    console.warn('Slow frame:', perfMetrics);
+  }
+
   requestAnimationFrame(animate);
 }
 
+let lowFPSCount = 0;
+const FPS_THRESHOLD = 30;
+const LOW_FPS_LIMIT = 10;
+
+function checkPerformance() {
+  const fps = 1000 / perfMetrics.total;
+  
+  if (fps < FPS_THRESHOLD) {
+    lowFPSCount++;
+    if (lowFPSCount > LOW_FPS_LIMIT) {
+      console.warn('Emergency cleanup triggered');
+      // Clear particles
+      spawnList.length = 0;
+      // Reset counters
+      lowFPSCount = 0;
+    }
+  } else {
+    lowFPSCount = 0;
+  }
+}
 
 // entry point
 init();
