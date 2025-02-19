@@ -1,4 +1,3 @@
-
 /*****************************************************************************
 The MIT License (MIT)
 
@@ -288,6 +287,7 @@ function CollideShip(sx, sy, pos)
 
 function WeaponCollisions()
 {
+  const start = performance.now();
 
   for (var i = 0; i< spawnList.length; i++)
   {
@@ -354,5 +354,7 @@ function WeaponCollisions()
             spawnList[i].life = 0; 
           }
       }
-   }
+  }
+
+  perfMetrics.collisions = performance.now() - start;
 }
